@@ -78,7 +78,7 @@ module ActiveRecord
           if (column = column_for_attribute(name)) && (include_primary_key || !column.primary)
             if include_readonly_attributes || (!include_readonly_attributes && !self.class.readonly_attributes.include?(name))
               value = read_attribute(name)
-              if self.class.columns_hash[name].type == :hstore && value && value.is_a?(Hash)
+              if self.class.columns_hash[name].simplified_type == :hstore && value && value.is_a?(Hash)
                 value = value.to_hstore # Done!
               elsif value && self.class.serialized_attributes.has_key?(name) && (value.acts_like?(:date) || value.acts_like?(:time) || value.is_a?(Hash) || value.is_a?(Array))
                 value = value.to_yaml
@@ -120,12 +120,12 @@ module ActiveRecord
     class PostgreSQLColumn < Column
       # Does the type casting from hstore columns using String#from_hstore or Hash#from_hstore.
       def type_cast_code_with_hstore(var_name)
-        type == :hstore ? "#{var_name}.from_hstore" : type_cast_code_without_hstore(var_name)
+        simplified_type == :hstore ? "#{var_name}.from_hstore" : type_cast_code_without_hstore(var_name)
       end
 
       # Adds the hstore type for the column.
       def simplified_type_with_hstore(field_type)
-        %w{hstore hstore.hstore}.include?(field_type) ? :hstore : simplified_type_without_hstore(field_type)
+        field_type.include?('hstore') ? :hstore : simplified_type_without_hstore(field_type)
       end
 
       alias_method_chain :type_cast_code, :hstore
@@ -139,7 +139,7 @@ module ActiveRecord
 
       # Quotes correctly a hstore column value.
       def quote_with_hstore(value, column = nil)
-        if value && column && %w{hstore hstore.hstore}.include?(column.sql_type)
+        if value && column && column.sql_type.include?('hstore')
           raise HstoreTypeMismatch, "#{column.name} must have a Hash or a valid hstore value (#{value})" unless value.kind_of?(Hash) || value.valid_hstore?
           return quote_without_hstore(value.to_hstore, column)
         end
