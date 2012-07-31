@@ -124,7 +124,8 @@ module ActiveRecord
       end
 
       # Adds the hstore type for the column.
-      def simplified_type_with_hstore(field_type)
+      def simplified_type_with_hstore(field_type = nil)
+        field_type ||= self.type
         field_type.include?('hstore') ? :hstore : simplified_type_without_hstore(field_type)
       end
 
